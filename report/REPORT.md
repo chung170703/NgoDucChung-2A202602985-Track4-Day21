@@ -3,7 +3,7 @@
 - **Họ tên:** Ngô Đức Chung
 - **MSSV:** 2A202602985 (phải trùng với MSSV trong tên repo `<HoVaTen>-<MSSV>-Track4-Day21`)
 - **Lớp:** [ĐIỀN]
-- **Link repo:** https://github.com/chung170703/K4-Track4-Day06-3D-From-Point-Clouds
+- **Link repo:** https://github.com/chung170703/NgoDucChung-2A202602985-Track4-Day21
 - **Topic:** A — LiDAR-camera projection QA
 - **Dataset:** data/synthetic, data/kitti_mini, data/nuscenes_mini_subset
 - **Các frame đã dùng:** data/synthetic `000000` (test tay); data/kitti_mini toàn bộ 20 frame (`000001` … `000061`; overlay demo `000019`, `000011`, `000004`; failure `000008`); data/nuscenes_mini_subset toàn bộ 80 frame (`scene-0103_000..039`, `scene-1094_000..039`; overlay demo `scene-0103_010`; failure `scene-0103_007`)
