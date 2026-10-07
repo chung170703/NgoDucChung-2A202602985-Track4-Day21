@@ -53,6 +53,18 @@ Metric chính (`pct_in_box`): với mỗi object, lấy các điểm LiDAR nằm
 - Latency của score (bỏ lần đầu, 20 lần, `results/alignment_latency.csv`; CPU Apple Silicon, Python 1 luồng, OpenCV 5.0.0): KITTI (120k điểm) p50 = 5.3 ms, p95 = 5.7 ms; nuScenes (35k điểm) p50 = 2.1 ms, p95 = 2.5 ms. Tiền xử lý ảnh (Canny + distance transform) p50 = 1.6 / 5.1 ms, chỉ làm một lần mỗi ảnh.
 - Hạn chế: chỉ 20 frame KITTI, nhóm "xa" của nuScenes chỉ có 36 object, ngưỡng score được hiệu chỉnh và đánh giá trên cùng dataset.
 
+**Vì sao KITTI và nuScenes cho kết quả khác nhau (B5).** Cùng yaw 1° nhưng nhóm xa mất 37.7 điểm % trên KITTI và chỉ 12.1 điểm % trên nuScenes. Nguyên nhân là kích thước của vật trên ảnh so với độ lệch pixel. Số đo từ code (các object được dùng trong Bảng 1, nhóm xa): KITTI khoảng cách TB 43.0 m, box rộng TB 45 px, tiêu cự `fx` = 721 nên 1° ≈ 12.6 px, tức lệch bằng ~28% bề rộng box. nuScenes khoảng cách TB 35.8 m, box rộng TB 136 px, `fx` = 1266 nên 1° ≈ 22.1 px, tức chỉ ~16% bề rộng box. Ở nuScenes ảnh 1600 px nên vật xa vẫn chiếm nhiều pixel hơn, và nhóm xa cũng gần hơn (trung bình 36 m so với 43 m); điểm vì thế vẫn nằm trong box dù đã lệch. Với score không cần label, ảnh hưởng lớn nhất là số beam: LiDAR 64 beam của KITTI cho ~2100 điểm biên độ sâu mỗi frame (baseline 0.56), LiDAR 32 beam của nuScenes chỉ ~53 (ban ngày) / ~116 (ban đêm) (baseline 0.24), nên score nuScenes nhiễu hơn và phát hiện yaw 1° chỉ 29% so với 51%. Ngoài ra nuScenes có độ lệch thời gian LiDAR–camera ~35.6 ms (KITTI không có timestamp), làm một phần misalignment không do calib (xem mục 3). Cảnh ban đêm (`scene-1094`) không làm baseline score thấp hơn ban ngày (0.24 ở cả hai cảnh); sai khác chính là số điểm biên, không phải độ sáng.
+
+**Lỗi cài sẵn trong `data/synthetic` (B6)** (`results/synthetic_defects.csv`, tạo bằng `python -m src.synthetic_audit`; các luật chạy độc lập trên mọi frame, không có báo động giả ở frame khác):
+
+| Lỗi | Frame bị lỗi | Cách phát hiện |
+|---|---|---|
+| Điểm NaN/Inf trong `.bin` (I/O) | Cả 5 frame `000000`–`000004` (22–23 điểm, ~0.10% mỗi frame) | `np.isfinite(points).all(axis=1)`; cột `invalid_ratio` trong `data_health.csv` luôn 0.10%. Phải lọc trước khi chiếu hoặc tính range |
+| Mất một sector góc quét (I/O / Preprocess) | `000003`, azimuth −40° … −5° (mật độ 30% so với trung vị các frame, 22 063 điểm so với ~23 800) | So mật độ điểm theo bin 5° với trung vị cùng bin qua các frame, cờ khi ≥ 3 bin liên tiếp < 60%. `empty_azimuth_bins` trong `data_health` KHÔNG bắt được (vẫn bằng 0 vì sector chưa trống hẳn) |
+| Khoảng hở timestamp (Time) | `000003`: `timestamps.txt` nhảy 0.2 s → 0.4 s (Δt = 0.20 s, trung vị 0.10 s) | Kiểm tra Δt giữa hai frame liên tiếp so với trung vị. Nội dung cảnh vẫn tiến đều mỗi frame (người đi bộ +2.0 m/frame), nên đây là sự cố ở log thời gian (mất frame hoặc timestamp sai), không phân biệt được từ dữ liệu |
+
+Mình cũng kiểm tra calib (5 file giống hệt nhau), label (97–100% điểm trong 2D box ở calib gốc, có 46–1110 điểm mỗi object) và ảnh (kích thước, độ sáng ~127–128 đồng đều) và không thấy bất thường, nhưng không có đáp án chính thức để đối chiếu nên không khẳng định đã tìm đủ mọi lỗi cài sẵn.
+
 Ảnh demo overlay với calib gốc nằm trong `results/figures/`: xe rất gần (`overlay_000019_*`), cảnh trung bình (`overlay_000011_*`), xe xa > 50 m (`overlay_000004_*`), nuScenes (`overlay_scene-0103_010_*`). Biểu đồ: `calib_sweep_kitti_mini.png`, `calib_sweep_nuscenes_mini_subset.png`, `alignment_score_kitti_mini.png`, `alignment_score_nuscenes_mini_subset.png`.
 
 ![demo](../results/figures/overlay_000011_r0.0_p0.0_y0.0_t0.0_0.0_0.0.png)
@@ -103,6 +115,9 @@ python -m src.calib_sweep --data-root data/kitti_mini data/nuscenes_mini_subset
 python -m src.alignment_score --data-root data/kitti_mini data/nuscenes_mini_subset
 python -m src.alignment_score --data-root data/kitti_mini --ratio 0.15 --out-prefix results/alignment_score_ratio015 --fig-dir /tmp
 python -m src.alignment_score --data-root data/kitti_mini data/nuscenes_mini_subset --latency   # results/alignment_latency.csv
+
+# Lỗi cài sẵn trong data/synthetic (B6): results/synthetic_defects.csv
+python -m src.synthetic_audit
 
 # Failure case (CP4): fail_01, fail_02, failure_cases.csv, ego_motion_time_offset.csv (chạy sau alignment_score)
 python -m src.failure_cases

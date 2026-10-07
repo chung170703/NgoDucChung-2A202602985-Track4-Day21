@@ -1,0 +1,4 @@
+defect,frame,evidence,layer
+NaN/Inf trong point cloud,"000000, 000001, 000002, 000003, 000004",000000: 23/23953 điểm; 000001: 23/23781 điểm; 000002: 23/23790 điểm; 000003: 22/22063 điểm; 000004: 23/23760 điểm,I/O
+Mất một sector góc quét,000003,azimuth -40° … -5°: mật độ 30% so với trung vị các frame (frame có 22041 điểm hợp lệ),I/O / Preprocess
+Khoảng hở timestamp,000003,"000002 -> 000003: Δt = 0.20s, trung vị 0.10s",Time
