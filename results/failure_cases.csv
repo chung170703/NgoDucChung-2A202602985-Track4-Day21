@@ -1,0 +1,6 @@
+case,frame,obj,dist_m,calib,pct_in_box,score,thr,pct_yaw3_undetected,n_edge_pts
+fail_01,000008,GẦN,7.9,calib gốc,99.6,,,,
+fail_01,000008,GẦN,7.9,yaw +1°,99.7,,,,
+fail_01,000008,XA,33.2,calib gốc,86.3,,,,
+fail_01,000008,XA,33.2,yaw +1°,65.8,,,,
+fail_02,scene-0103_007,,,,,0.447,0.113,86.1,40.0
