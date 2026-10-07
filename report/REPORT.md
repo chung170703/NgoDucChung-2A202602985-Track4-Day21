@@ -55,6 +55,20 @@ Metric chính (`pct_in_box`): với mỗi object, lấy các điểm LiDAR nằm
 
 **Vì sao KITTI và nuScenes cho kết quả khác nhau (B5).** Cùng yaw 1° nhưng nhóm xa mất 37.7 điểm % trên KITTI và chỉ 12.1 điểm % trên nuScenes. Nguyên nhân là kích thước của vật trên ảnh so với độ lệch pixel. Số đo từ code (các object được dùng trong Bảng 1, nhóm xa): KITTI khoảng cách TB 43.0 m, box rộng TB 45 px, tiêu cự `fx` = 721 nên 1° ≈ 12.6 px, tức lệch bằng ~28% bề rộng box. nuScenes khoảng cách TB 35.8 m, box rộng TB 136 px, `fx` = 1266 nên 1° ≈ 22.1 px, tức chỉ ~16% bề rộng box. Ở nuScenes ảnh 1600 px nên vật xa vẫn chiếm nhiều pixel hơn, và nhóm xa cũng gần hơn (trung bình 36 m so với 43 m); điểm vì thế vẫn nằm trong box dù đã lệch. Với score không cần label, ảnh hưởng lớn nhất là số beam: LiDAR 64 beam của KITTI cho ~2100 điểm biên độ sâu mỗi frame (baseline 0.56), LiDAR 32 beam của nuScenes chỉ ~53 (ban ngày) / ~116 (ban đêm) (baseline 0.24), nên score nuScenes nhiễu hơn và phát hiện yaw 1° chỉ 29% so với 51%. Ngoài ra nuScenes có độ lệch thời gian LiDAR–camera ~35.6 ms (KITTI không có timestamp), làm một phần misalignment không do calib (xem mục 3). Cảnh ban đêm (`scene-1094`) không làm baseline score thấp hơn ban ngày (0.24 ở cả hai cảnh); sai khác chính là số điểm biên, không phải độ sáng.
 
+**Stress test suy giảm dữ liệu (B2)** (`results/degradation_stress.csv`, `python -m src.degradation_stress`; `seed=0`, chạy lại ra đúng cùng số). Câu hỏi: khi dữ liệu LiDAR xấu đi nhưng calib vẫn đúng, monitor của mục trên có báo nhầm hoặc "mù" không? Ba loại suy giảm, mỗi loại ≥ 3 mức, dùng `starter/perturb.py`. Ngưỡng báo = ngưỡng của dữ liệu sạch (phân vị 5%), nên "báo nhầm" ở dữ liệu sạch là 5%. Mỗi mẫu 1 frame (KITTI 20 frame, nuScenes 80), nên bước nhảy là 5% / 1.25%; `motion_smear` chỉ chạy trên KITTI vì hàm này giả định x là phía trước, còn nuScenes có x sang phải.
+
+| Dataset | Suy giảm | Điểm TB trên object | % điểm trong box (calib đúng) | % báo nhầm (calib đúng) | % phát hiện yaw 1° | % không tính được score |
+|---|---|---|---|---|---|---|
+| KITTI | sạch | 295.9 | 96.8 | 5.0 | 17.5 | 0 |
+| KITTI | dropout giữ 70% / 50% / 30% | 206 / 147 / 89 | 96.7 / 96.4 / 96.7 | 0 / 0 / 0 | 17.5 / 20.0 / 15.0 | 0 |
+| KITTI | nhiễu σ 0.02 / 0.05 / 0.10 m | 295 / 291 / 280 | 96.6 / 96.1 / 95.7 | 5 / 5 / **25** | 17.5 / 10.0 / 25.0 | 0 |
+| KITTI | motion smear 10 / 20 / 30 m/s | 158 / 87 / 61 | 94.2 / 91.8 / **86.9** | 10 / 15 / **30** | 12.5 / 17.5 / 27.5 | 0 |
+| nuScenes | sạch | 48.8 | 98.3 | 5.0 | 15.0 | 4.2 |
+| nuScenes | dropout giữ 70% / 50% / 30% | 33 / 24 / 14 | 98.4 / 98.4 / 98.5 | 7.5 / 7.5 / 0 | 16.9 / 16.9 / **1.9** | 24 / 39 / **93** |
+| nuScenes | nhiễu σ 0.02 / 0.05 / 0.10 m | 49 / 49 / 48 | 98.3 / 97.5 / 96.6 | 6.2 / 2.5 / **16.2** | 15.6 / 15.0 / 23.8 | 2.9 / 0.4 / 0 |
+
+Nhận xét: (1) Dropout không làm sai metric hình học (% điểm trong box giữ nguyên) và không gây báo nhầm, nhưng với LiDAR thưa như nuScenes thì monitor trở nên **mù**: giữ 30% điểm thì 93% frame không tính được score (quá ít điểm biên độ sâu), nên tỉ lệ phát hiện rơi xuống 1.9% mà không có cảnh báo nào. (2) Nhiễu σ ≥ 0.1 m và motion smear ≥ 20 m/s làm score tụt như khi calib lệch: báo nhầm lên 16–30% trong khi calib đúng, và "phát hiện yaw 1°" tăng theo cùng mức, nghĩa là monitor không phân biệt được lỗi calib với dữ liệu xấu. (3) Nhiễu σ ≤ 0.05 m là vô hại. Hệ quả triển khai: phải kèm chỉ số sức khoẻ dữ liệu (số điểm biên độ sâu, độ nhiễu, tốc độ xe/deskew) và bỏ qua frame khi chúng ngoài ngưỡng; log cả tỉ lệ frame "không tính được score" thay vì coi là an toàn.
+
 **Lỗi cài sẵn trong `data/synthetic` (B6)** (`results/synthetic_defects.csv`, tạo bằng `python -m src.synthetic_audit`; các luật chạy độc lập trên mọi frame, không có báo động giả ở frame khác):
 
 | Lỗi | Frame bị lỗi | Cách phát hiện |
@@ -115,6 +129,9 @@ python -m src.calib_sweep --data-root data/kitti_mini data/nuscenes_mini_subset
 python -m src.alignment_score --data-root data/kitti_mini data/nuscenes_mini_subset
 python -m src.alignment_score --data-root data/kitti_mini --ratio 0.15 --out-prefix results/alignment_score_ratio015 --fig-dir /tmp
 python -m src.alignment_score --data-root data/kitti_mini data/nuscenes_mini_subset --latency   # results/alignment_latency.csv
+
+# Stress test suy giảm dữ liệu (B2): results/degradation_stress.csv + degradation_stress_*.png
+python -m src.degradation_stress --data-root data/kitti_mini data/nuscenes_mini_subset
 
 # Lỗi cài sẵn trong data/synthetic (B6): results/synthetic_defects.csv
 python -m src.synthetic_audit
