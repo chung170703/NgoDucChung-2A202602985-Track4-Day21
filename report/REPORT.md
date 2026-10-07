@@ -2,7 +2,7 @@
 
 - **Họ tên:** Ngô Đức Chung
 - **MSSV:** 2A202602985 (phải trùng với MSSV trong tên repo `<HoVaTen>-<MSSV>-Track4-Day21`)
-- **Lớp:** [ĐIỀN]
+- **Lớp:** AI20K-T4
 - **Link repo:** https://github.com/chung170703/NgoDucChung-2A202602985-Track4-Day21
 - **Topic:** A — LiDAR-camera projection QA
 - **Dataset:** data/synthetic, data/kitti_mini, data/nuscenes_mini_subset
