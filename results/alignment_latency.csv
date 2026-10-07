@@ -1,0 +1,3 @@
+dataset,frame,n_points,n_runs,score_p50_ms,score_p95_ms,image_prep_p50_ms,image_prep_p95_ms,hardware
+kitti_mini,000001,120268,20,5.33,5.69,1.63,2.16,"arm / Darwin 25.6.0 / OpenCV 5.0.0 (CPU, 1 luồng Python)"
+nuscenes_mini_subset,scene-0103_000,34752,20,2.09,2.52,5.1,5.31,"arm / Darwin 25.6.0 / OpenCV 5.0.0 (CPU, 1 luồng Python)"
